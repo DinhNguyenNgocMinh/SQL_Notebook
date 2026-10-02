@@ -11,6 +11,22 @@ function textOrPlaceholder(value) {
   return value.trim() || placeholder;
 }
 
+function formatSql(value) {
+  if (!value.trim()) return value;
+
+  return value
+    .replace(
+      /SELECT\s+([\s\S]*?)(?=\s+FROM\s)/gi,
+      (_, columns) =>
+        `SELECT\n  ${columns.trim().replace(/\s*,\s*/g, ",\n  ")}`,
+    )
+    .replace(
+      /\s+(FROM|INNER JOIN|LEFT JOIN|RIGHT JOIN|FULL JOIN|CROSS JOIN|JOIN|WHERE|GROUP BY|HAVING|ORDER BY|LIMIT|OFFSET|UNION ALL|UNION|INTERSECT|EXCEPT)\s+/gi,
+      "\n$1 ",
+    )
+    .replace(/\s+(AND|OR)\s+/gi, "\n  $1 ");
+}
+
 function createTextBlock(label, value) {
   const block = document.createElement("section");
   block.className = "content-block";
@@ -45,7 +61,9 @@ function createCodeBlock(labelText, value, options = {}) {
   const pre = document.createElement("pre");
   const code = document.createElement("code");
   code.className = options.highlight ? "syntax-box language-sql" : "output-box";
-  code.textContent = textOrPlaceholder(value);
+  code.textContent = options.highlight
+    ? textOrPlaceholder(formatSql(value))
+    : textOrPlaceholder(value);
   if (!value.trim()) code.classList.add("empty-content");
 
   pre.append(code);
