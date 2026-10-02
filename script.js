@@ -6,10 +6,9 @@ const resultsCount = document.querySelector("#results-count");
 const emptyState = document.querySelector("#empty-state");
 
 const placeholder = "— no content yet —";
-let topics = [];
 
 function textOrPlaceholder(value) {
-  return value.trim() ? value : placeholder;
+  return value.trim() || placeholder;
 }
 
 function createTextBlock(label, value) {
@@ -57,15 +56,22 @@ function renderTopics(items) {
 
     const summary = document.createElement("summary");
     summary.className = "topic-summary";
-    summary.innerHTML = `<span class="topic-number">${String(index + 1).padStart(2, "0")}</span><span class="topic-title"></span>`;
-    summary.querySelector(".topic-title").textContent = topic.title;
+    const number = document.createElement("span");
+    number.className = "topic-number";
+    number.textContent = String(index + 1).padStart(2, "0");
+
+    const title = document.createElement("span");
+    title.className = "topic-title";
+    title.textContent = topic.title;
+
+    summary.append(number, title);
 
     const content = document.createElement("div");
     content.className = "topic-content";
     content.append(
       createTextBlock("Definition", topic.definition),
       createSyntaxBlock(topic.syntax),
-      createTextBlock("Note", topic.note)
+      createTextBlock("Note", topic.note),
     );
 
     details.append(summary, content);
@@ -76,11 +82,13 @@ function renderTopics(items) {
 }
 
 function visibleTopics() {
-  return [...document.querySelectorAll(".topic")].filter((topic) => !topic.hidden);
+  return [...document.querySelectorAll(".topic")].filter(
+    (topic) => !topic.hidden,
+  );
 }
 
 function filterTopics() {
-  const query = searchInput.value.trim().toLocaleLowerCase();
+  const query = searchInput.value.trim().toLowerCase();
   const elements = [...document.querySelectorAll(".topic")];
 
   elements.forEach((topic) => {
@@ -89,12 +97,16 @@ function filterTopics() {
   });
 
   const count = visibleTopics().length;
-  resultsCount.textContent = query ? `${count} matching topic${count === 1 ? "" : "s"}` : `${count} topics`;
+  resultsCount.textContent = query
+    ? `${count} matching topic${count === 1 ? "" : "s"}`
+    : `${count} topics`;
   emptyState.hidden = count !== 0;
 }
 
 function setAll(open) {
-  visibleTopics().forEach((topic) => { topic.open = open; });
+  visibleTopics().forEach((topic) => {
+    topic.open = open;
+  });
 }
 
 async function loadTopics() {
@@ -103,14 +115,14 @@ async function loadTopics() {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
 
-    if (!Array.isArray(data)) throw new Error("data.json must contain an array.");
-    topics = data;
-    renderTopics(topics);
-  } catch (error) {
+    if (!Array.isArray(data))
+      throw new Error("data.json must contain an array.");
+    renderTopics(data);
+  } catch {
     resultsCount.textContent = "Unable to load reference data.";
     emptyState.hidden = false;
-    emptyState.textContent = "Run the site from GitHub Pages or a local web server so data.json can be loaded.";
-    console.error("Could not load data.json:", error);
+    emptyState.textContent =
+      "Run the site from GitHub Pages or a local web server so data.json can be loaded.";
   }
 }
 

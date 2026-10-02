@@ -1,29 +1,191 @@
 [
-  { "id": "select-data", "title": "Query Data (SELECT)", "definition": "To retrieve data from tables", "syntax": "SELECT customer_id, first_name, last_name\nFROM customer\nORDER BY customer_id\nLIMIT 10;", "note": "Select only the columns you need; avoid SELECT * in production queries." },
-  { "id": "ddl-commands", "title": "DDL Commands", "definition": "To define database objects", "syntax": "CREATE TABLE customer_note (\n    note_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n    customer_id smallint NOT NULL REFERENCES customer(customer_id),\n    note_text text NOT NULL\n);\n\nALTER TABLE customer_note ADD COLUMN created_at timestamptz NOT NULL DEFAULT now();\n\nDROP TABLE customer_note;", "note": "DDL changes schema objects and may acquire locks; review its impact before running it in production." },
-  { "id": "dml-commands", "title": "DML Commands", "definition": "To modify table data", "syntax": "CREATE TEMP TABLE customer_note AS\nSELECT customer_id, 'Preferred contact: email'::text AS note_text\nFROM customer\nWHERE customer_id = 1;\n\nINSERT INTO customer_note (customer_id, note_text)\nSELECT customer_id, 'Preferred contact: phone'\nFROM customer\nWHERE customer_id = 2;\n\nUPDATE customer_note\nSET note_text = 'Preferred contact: SMS'\nWHERE customer_id = 1;\n\nDELETE FROM customer_note\nWHERE customer_id = 2;", "note": "Use a transaction and a precise WHERE clause for UPDATE or DELETE operations." },
-  { "id": "filtering-data", "title": "Filtering Data", "definition": "To restrict returned rows", "syntax": "SELECT customer_id, first_name, last_name, active\nFROM customer\nWHERE active = 1\n  AND first_name ILIKE 'A%'\n  AND customer_id BETWEEN 1 AND 100\nORDER BY last_name;", "note": "ILIKE performs case-insensitive matching in PostgreSQL; a leading wildcard can prevent efficient B-tree index use." },
-  { "id": "sql-joins-basics", "title": "SQL Joins (Basics)", "definition": "To combine related table rows", "syntax": "SELECT c.customer_id, c.first_name, a.address\nFROM customer AS c\nINNER JOIN address AS a ON a.address_id = c.address_id;\n\nSELECT c.customer_id, r.rental_id\nFROM customer AS c\nLEFT JOIN rental AS r ON r.customer_id = c.customer_id;\n\nSELECT c.customer_id, r.rental_id\nFROM customer AS c\nRIGHT JOIN rental AS r ON r.customer_id = c.customer_id;", "note": "Put join predicates in ON; moving right-table filters into WHERE can unintentionally turn a LEFT JOIN into an INNER JOIN." },
-  { "id": "sql-joins-advanced", "title": "SQL Joins (Advanced)", "definition": "To model complex table relationships", "syntax": "SELECT f.title, cat.name AS category\nFROM film AS f\nJOIN film_category AS fc ON fc.film_id = f.film_id\nJOIN category AS cat ON cat.category_id = fc.category_id;\n\nSELECT s1.store_id AS store_a, s2.store_id AS store_b\nFROM store AS s1\nCROSS JOIN store AS s2\nWHERE s1.store_id < s2.store_id;\n\nSELECT c.customer_id\nFROM customer AS c\nWHERE EXISTS (\n    SELECT 1 FROM rental AS r WHERE r.customer_id = c.customer_id\n);", "note": "Many-to-many joins can multiply rows; confirm the intended grain before aggregating results." },
-  { "id": "set-operators", "title": "Set Operators", "definition": "To combine compatible query results", "syntax": "SELECT first_name FROM customer\nUNION\nSELECT first_name FROM staff;\n\nSELECT customer_id FROM customer\nINTERSECT\nSELECT customer_id FROM rental;\n\nSELECT customer_id FROM customer\nEXCEPT\nSELECT customer_id FROM rental;", "note": "UNION removes duplicates, while UNION ALL preserves them and is usually faster." },
-  { "id": "sql-functions", "title": "SQL Functions", "definition": "To transform values within queries", "syntax": "SELECT customer_id,\n       upper(first_name) AS first_name_upper,\n       length(last_name) AS last_name_length,\n       coalesce(email, 'unknown') AS email\nFROM customer\nLIMIT 10;", "note": "Functions operate per row unless they are aggregate or window functions." },
-  { "id": "string-functions", "title": "String Functions", "definition": "To manipulate text values", "syntax": "SELECT customer_id,\n       concat(first_name, ' ', last_name) AS full_name,\n       upper(last_name) AS last_name_upper,\n       left(email, 5) AS email_prefix,\n       replace(email, '.org', '.example') AS masked_domain\nFROM customer\nLIMIT 10;", "note": "Use concat when nullable inputs are possible; it treats NULL arguments as empty strings." },
-  { "id": "numeric-functions", "title": "Numeric Functions", "definition": "To calculate numeric values", "syntax": "SELECT payment_id, amount,\n       round(amount * 1.10, 2) AS amount_with_tax,\n       abs(amount - 5.00) AS distance_from_five,\n       ceil(amount) AS rounded_up\nFROM payment\nLIMIT 10;", "note": "Cast operands deliberately when integer division or precision could affect the result." },
-  { "id": "date-and-time-functions", "title": "Date and Time Functions", "definition": "To calculate temporal values", "syntax": "SELECT rental_id, rental_date, return_date,\n       rental_date::date AS rental_day,\n       date_trunc('month', rental_date) AS rental_month,\n       return_date - rental_date AS rental_duration\nFROM rental\nWHERE rental_date >= date '2005-06-01'\nLIMIT 10;", "note": "Timestamps in dvdrental are stored without time zone; apply time-zone conversion only when the data semantics require it." },
-  { "id": "null-functions", "title": "NULL Functions", "definition": "To handle missing values", "syntax": "SELECT rental_id,\n       coalesce(return_date, now()) AS effective_return_date,\n       nullif(staff_id, 0) AS nullable_staff_id\nFROM rental\nLIMIT 10;", "note": "NULL is not equal to anything, including NULL; use IS NULL or IS NOT NULL for null checks." },
-  { "id": "case-statement", "title": "Case Statement", "definition": "To apply conditional logic", "syntax": "SELECT payment_id, amount,\n       CASE\n           WHEN amount >= 8 THEN 'high'\n           WHEN amount >= 4 THEN 'medium'\n           ELSE 'low'\n       END AS payment_band\nFROM payment\nLIMIT 10;", "note": "CASE returns the first matching branch, so order overlapping conditions from most specific to least specific." },
-  { "id": "aggregate-functions", "title": "Aggregate Functions", "definition": "To summarize groups of rows", "syntax": "SELECT customer_id,\n       count(*) AS payment_count,\n       sum(amount) AS total_paid,\n       avg(amount) AS average_payment\nFROM payment\nGROUP BY customer_id\nHAVING sum(amount) >= 100\nORDER BY total_paid DESC;", "note": "WHERE filters rows before aggregation; HAVING filters aggregated groups." },
-  { "id": "window-functions-basics", "title": "Window Functions Basics", "definition": "To analyze rows without grouping", "syntax": "SELECT customer_id, payment_id, amount,\n       avg(amount) OVER (PARTITION BY customer_id) AS customer_avg_payment\nFROM payment\nORDER BY customer_id, payment_id;", "note": "Window functions retain the original row count, unlike GROUP BY aggregates." },
-  { "id": "window-aggregate", "title": "Window Aggregate", "definition": "To calculate aggregates across windows", "syntax": "SELECT customer_id, payment_date, amount,\n       sum(amount) OVER (\n           PARTITION BY customer_id\n           ORDER BY payment_date, payment_id\n           ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW\n       ) AS running_total\nFROM payment\nORDER BY customer_id, payment_date, payment_id;", "note": "Specify ROWS explicitly for running totals when ORDER BY values can tie." },
-  { "id": "window-ranking", "title": "Window Ranking", "definition": "To rank rows within groups", "syntax": "SELECT customer_id, payment_id, amount,\n       row_number() OVER (PARTITION BY customer_id ORDER BY amount DESC) AS row_num,\n       rank() OVER (PARTITION BY customer_id ORDER BY amount DESC) AS payment_rank,\n       dense_rank() OVER (PARTITION BY customer_id ORDER BY amount DESC) AS dense_payment_rank\nFROM payment;", "note": "RANK leaves gaps after ties; DENSE_RANK does not. Add a stable tie-breaker for deterministic ROW_NUMBER results." },
-  { "id": "window-value", "title": "Window Value", "definition": "To access related row values", "syntax": "SELECT customer_id, payment_date, amount,\n       lag(amount) OVER (PARTITION BY customer_id ORDER BY payment_date, payment_id) AS previous_amount,\n       lead(amount) OVER (PARTITION BY customer_id ORDER BY payment_date, payment_id) AS next_amount,\n       first_value(amount) OVER (PARTITION BY customer_id ORDER BY payment_date, payment_id) AS first_amount\nFROM payment;", "note": "FIRST_VALUE uses the current window frame; define a frame explicitly when you need the partition-wide first value." },
-  { "id": "subqueries", "title": "Subqueries", "definition": "To nest a query within another", "syntax": "SELECT customer_id, first_name, last_name\nFROM customer\nWHERE customer_id IN (\n    SELECT customer_id\n    FROM payment\n    GROUP BY customer_id\n    HAVING sum(amount) >= 100\n);", "note": "Prefer EXISTS for existence checks, especially when the subquery may return many rows." },
-  { "id": "common-table-expressions-cte", "title": "Common Table Expressions (CTE)", "definition": "To name an intermediate result", "syntax": "WITH customer_spend AS (\n    SELECT customer_id, sum(amount) AS total_paid\n    FROM payment\n    GROUP BY customer_id\n)\nSELECT c.customer_id, c.first_name, cs.total_paid\nFROM customer AS c\nJOIN customer_spend AS cs ON cs.customer_id = c.customer_id\nORDER BY cs.total_paid DESC;", "note": "A CTE improves readability; PostgreSQL can inline non-recursive CTEs when it is safe to do so." },
-  { "id": "views", "title": "Views", "definition": "To save a reusable query", "syntax": "CREATE VIEW customer_payment_summary AS\nSELECT customer_id, count(*) AS payment_count, sum(amount) AS total_paid\nFROM payment\nGROUP BY customer_id;\n\nSELECT *\nFROM customer_payment_summary\nORDER BY total_paid DESC;\n\nDROP VIEW customer_payment_summary;", "note": "A regular view stores its query, not its result; query performance still depends on the underlying tables and plan." },
-  { "id": "ctas-and-temp-tables", "title": "CTAS and Temp Tables", "definition": "To materialize query results", "syntax": "CREATE TEMP TABLE recent_rentals AS\nSELECT rental_id, customer_id, rental_date\nFROM rental\nWHERE rental_date >= date '2005-07-01';\n\nSELECT count(*)\nFROM recent_rentals;", "note": "Temporary tables are session-scoped and are dropped automatically when the session ends." },
-  { "id": "stored-procedures", "title": "Stored Procedures", "definition": "To encapsulate procedural operations", "syntax": "CREATE PROCEDURE validate_customer(p_customer_id smallint)\nLANGUAGE plpgsql\nAS $$\nBEGIN\n    IF NOT EXISTS (SELECT 1 FROM customer WHERE customer_id = p_customer_id) THEN\n        RAISE EXCEPTION 'Customer % does not exist', p_customer_id;\n    END IF;\nEND;\n$$;\n\nCALL validate_customer(1);\n\nDROP PROCEDURE validate_customer(smallint);", "note": "Procedures are invoked with CALL; PostgreSQL functions are invoked inside expressions such as SELECT." },
-  { "id": "triggers", "title": "Triggers", "definition": "To react to table changes", "syntax": "CREATE FUNCTION set_customer_last_update()\nRETURNS trigger\nLANGUAGE plpgsql\nAS $$\nBEGIN\n    NEW.last_update := now();\n    RETURN NEW;\nEND;\n$$;\n\nCREATE TRIGGER customer_set_last_update\nBEFORE UPDATE ON customer\nFOR EACH ROW EXECUTE FUNCTION set_customer_last_update();\n\nDROP TRIGGER customer_set_last_update ON customer;\nDROP FUNCTION set_customer_last_update();", "note": "Triggers execute implicitly and can make writes harder to reason about; keep their logic small and documented." },
-  { "id": "indexes", "title": "Indexes", "definition": "To accelerate data access", "syntax": "CREATE INDEX idx_payment_customer_date\nON payment (customer_id, payment_date);\n\nSELECT payment_id, amount\nFROM payment\nWHERE customer_id = 1\n  AND payment_date >= timestamp '2005-06-01';\n\nDROP INDEX idx_payment_customer_date;", "note": "Indexes speed qualifying reads but add storage and write overhead. Put commonly filtered leading columns first in a composite B-tree index." },
-  { "id": "execution-plan", "title": "Execution Plan", "definition": "To inspect query execution", "syntax": "EXPLAIN (ANALYZE, BUFFERS)\nSELECT c.customer_id, sum(p.amount) AS total_paid\nFROM customer AS c\nJOIN payment AS p ON p.customer_id = c.customer_id\nWHERE p.payment_date >= timestamp '2005-06-01'\nGROUP BY c.customer_id;", "note": "EXPLAIN ANALYZE executes the query; use it carefully with expensive or mutating statements." },
-  { "id": "partitions", "title": "Partitions", "definition": "To split large tables by key", "syntax": "CREATE TABLE payment_archive (\n    payment_id integer NOT NULL,\n    customer_id smallint NOT NULL,\n    payment_date timestamp NOT NULL,\n    amount numeric(5,2) NOT NULL\n) PARTITION BY RANGE (payment_date);\n\nCREATE TABLE payment_archive_2005_06\nPARTITION OF payment_archive\nFOR VALUES FROM ('2005-06-01') TO ('2005-07-01');\n\nINSERT INTO payment_archive (payment_id, customer_id, payment_date, amount)\nSELECT payment_id, customer_id, payment_date, amount\nFROM payment\nWHERE payment_date >= timestamp '2005-06-01'\n  AND payment_date < timestamp '2005-07-01';", "note": "Partition pruning requires predicates that can be matched to the partition key. Partitioning is not a substitute for appropriate indexes." }
+  {
+    "id": "select-data",
+    "title": "Query Data (SELECT)",
+    "definition": "To retrieve data from tables",
+    "syntax": "SELECT customer_id, first_name, last_name\nFROM customer\nORDER BY customer_id\nLIMIT 10;",
+    "note": "Select only the columns you need; avoid SELECT * in production queries."
+  },
+  {
+    "id": "ddl-commands",
+    "title": "DDL Commands",
+    "definition": "To define database objects",
+    "syntax": "CREATE TABLE customer_note (\n    note_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n    customer_id smallint NOT NULL REFERENCES customer(customer_id),\n    note_text text NOT NULL\n);\n\nALTER TABLE customer_note ADD COLUMN created_at timestamptz NOT NULL DEFAULT now();\n\nDROP TABLE customer_note;",
+    "note": "DDL changes schema objects and may acquire locks; review its impact before running it in production."
+  },
+  {
+    "id": "dml-commands",
+    "title": "DML Commands",
+    "definition": "To modify table data",
+    "syntax": "CREATE TEMP TABLE customer_note AS\nSELECT customer_id, 'Preferred contact: email'::text AS note_text\nFROM customer\nWHERE customer_id = 1;\n\nINSERT INTO customer_note (customer_id, note_text)\nSELECT customer_id, 'Preferred contact: phone'\nFROM customer\nWHERE customer_id = 2;\n\nUPDATE customer_note\nSET note_text = 'Preferred contact: SMS'\nWHERE customer_id = 1;\n\nDELETE FROM customer_note\nWHERE customer_id = 2;",
+    "note": "Use a transaction and a precise WHERE clause for UPDATE or DELETE operations."
+  },
+  {
+    "id": "filtering-data",
+    "title": "Filtering Data",
+    "definition": "To restrict returned rows",
+    "syntax": "SELECT customer_id, first_name, last_name, active\nFROM customer\nWHERE active = 1\n  AND first_name ILIKE 'A%'\n  AND customer_id BETWEEN 1 AND 100\nORDER BY last_name;",
+    "note": "ILIKE performs case-insensitive matching in PostgreSQL; a leading wildcard can prevent efficient B-tree index use."
+  },
+  {
+    "id": "sql-joins-basics",
+    "title": "SQL Joins (Basics)",
+    "definition": "To combine related table rows",
+    "syntax": "SELECT c.customer_id, c.first_name, a.address\nFROM customer AS c\nINNER JOIN address AS a ON a.address_id = c.address_id;\n\nSELECT c.customer_id, r.rental_id\nFROM customer AS c\nLEFT JOIN rental AS r ON r.customer_id = c.customer_id;\n\nSELECT c.customer_id, r.rental_id\nFROM customer AS c\nRIGHT JOIN rental AS r ON r.customer_id = c.customer_id;",
+    "note": "Put join predicates in ON; moving right-table filters into WHERE can unintentionally turn a LEFT JOIN into an INNER JOIN."
+  },
+  {
+    "id": "sql-joins-advanced",
+    "title": "SQL Joins (Advanced)",
+    "definition": "To model complex table relationships",
+    "syntax": "SELECT f.title, cat.name AS category\nFROM film AS f\nJOIN film_category AS fc ON fc.film_id = f.film_id\nJOIN category AS cat ON cat.category_id = fc.category_id;\n\nSELECT s1.store_id AS store_a, s2.store_id AS store_b\nFROM store AS s1\nCROSS JOIN store AS s2\nWHERE s1.store_id < s2.store_id;\n\nSELECT c.customer_id\nFROM customer AS c\nWHERE EXISTS (\n    SELECT 1 FROM rental AS r WHERE r.customer_id = c.customer_id\n);",
+    "note": "Many-to-many joins can multiply rows; confirm the intended grain before aggregating results."
+  },
+  {
+    "id": "set-operators",
+    "title": "Set Operators",
+    "definition": "To combine compatible query results",
+    "syntax": "SELECT first_name FROM customer\nUNION\nSELECT first_name FROM staff;\n\nSELECT customer_id FROM customer\nINTERSECT\nSELECT customer_id FROM rental;\n\nSELECT customer_id FROM customer\nEXCEPT\nSELECT customer_id FROM rental;",
+    "note": "UNION removes duplicates, while UNION ALL preserves them and is usually faster."
+  },
+  {
+    "id": "sql-functions",
+    "title": "SQL Functions",
+    "definition": "To transform values within queries",
+    "syntax": "SELECT customer_id,\n       upper(first_name) AS first_name_upper,\n       length(last_name) AS last_name_length,\n       coalesce(email, 'unknown') AS email\nFROM customer\nLIMIT 10;",
+    "note": "Functions operate per row unless they are aggregate or window functions."
+  },
+  {
+    "id": "string-functions",
+    "title": "String Functions",
+    "definition": "To manipulate text values",
+    "syntax": "SELECT customer_id,\n       concat(first_name, ' ', last_name) AS full_name,\n       upper(last_name) AS last_name_upper,\n       left(email, 5) AS email_prefix,\n       replace(email, '.org', '.example') AS masked_domain\nFROM customer\nLIMIT 10;",
+    "note": "Use concat when nullable inputs are possible; it treats NULL arguments as empty strings."
+  },
+  {
+    "id": "numeric-functions",
+    "title": "Numeric Functions",
+    "definition": "To calculate numeric values",
+    "syntax": "SELECT payment_id, amount,\n       round(amount * 1.10, 2) AS amount_with_tax,\n       abs(amount - 5.00) AS distance_from_five,\n       ceil(amount) AS rounded_up\nFROM payment\nLIMIT 10;",
+    "note": "Cast operands deliberately when integer division or precision could affect the result."
+  },
+  {
+    "id": "date-and-time-functions",
+    "title": "Date and Time Functions",
+    "definition": "To calculate temporal values",
+    "syntax": "SELECT rental_id, rental_date, return_date,\n       rental_date::date AS rental_day,\n       date_trunc('month', rental_date) AS rental_month,\n       return_date - rental_date AS rental_duration\nFROM rental\nWHERE rental_date >= date '2005-06-01'\nLIMIT 10;",
+    "note": "Timestamps in dvdrental are stored without time zone; apply time-zone conversion only when the data semantics require it."
+  },
+  {
+    "id": "null-functions",
+    "title": "NULL Functions",
+    "definition": "To handle missing values",
+    "syntax": "SELECT rental_id,\n       coalesce(return_date, now()) AS effective_return_date,\n       nullif(staff_id, 0) AS nullable_staff_id\nFROM rental\nLIMIT 10;",
+    "note": "NULL is not equal to anything, including NULL; use IS NULL or IS NOT NULL for null checks."
+  },
+  {
+    "id": "case-statement",
+    "title": "Case Statement",
+    "definition": "To apply conditional logic",
+    "syntax": "SELECT payment_id, amount,\n       CASE\n           WHEN amount >= 8 THEN 'high'\n           WHEN amount >= 4 THEN 'medium'\n           ELSE 'low'\n       END AS payment_band\nFROM payment\nLIMIT 10;",
+    "note": "CASE returns the first matching branch, so order overlapping conditions from most specific to least specific."
+  },
+  {
+    "id": "aggregate-functions",
+    "title": "Aggregate Functions",
+    "definition": "To summarize groups of rows",
+    "syntax": "SELECT customer_id,\n       count(*) AS payment_count,\n       sum(amount) AS total_paid,\n       avg(amount) AS average_payment\nFROM payment\nGROUP BY customer_id\nHAVING sum(amount) >= 100\nORDER BY total_paid DESC;",
+    "note": "WHERE filters rows before aggregation; HAVING filters aggregated groups."
+  },
+  {
+    "id": "window-functions-basics",
+    "title": "Window Functions Basics",
+    "definition": "To analyze rows without grouping",
+    "syntax": "SELECT customer_id, payment_id, amount,\n       avg(amount) OVER (PARTITION BY customer_id) AS customer_avg_payment\nFROM payment\nORDER BY customer_id, payment_id;",
+    "note": "Window functions retain the original row count, unlike GROUP BY aggregates."
+  },
+  {
+    "id": "window-aggregate",
+    "title": "Window Aggregate",
+    "definition": "To calculate aggregates across windows",
+    "syntax": "SELECT customer_id, payment_date, amount,\n       sum(amount) OVER (\n           PARTITION BY customer_id\n           ORDER BY payment_date, payment_id\n           ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW\n       ) AS running_total\nFROM payment\nORDER BY customer_id, payment_date, payment_id;",
+    "note": "Specify ROWS explicitly for running totals when ORDER BY values can tie."
+  },
+  {
+    "id": "window-ranking",
+    "title": "Window Ranking",
+    "definition": "To rank rows within groups",
+    "syntax": "SELECT customer_id, payment_id, amount,\n       row_number() OVER (PARTITION BY customer_id ORDER BY amount DESC) AS row_num,\n       rank() OVER (PARTITION BY customer_id ORDER BY amount DESC) AS payment_rank,\n       dense_rank() OVER (PARTITION BY customer_id ORDER BY amount DESC) AS dense_payment_rank\nFROM payment;",
+    "note": "RANK leaves gaps after ties; DENSE_RANK does not. Add a stable tie-breaker for deterministic ROW_NUMBER results."
+  },
+  {
+    "id": "window-value",
+    "title": "Window Value",
+    "definition": "To access related row values",
+    "syntax": "SELECT customer_id, payment_date, amount,\n       lag(amount) OVER (PARTITION BY customer_id ORDER BY payment_date, payment_id) AS previous_amount,\n       lead(amount) OVER (PARTITION BY customer_id ORDER BY payment_date, payment_id) AS next_amount,\n       first_value(amount) OVER (PARTITION BY customer_id ORDER BY payment_date, payment_id) AS first_amount\nFROM payment;",
+    "note": "FIRST_VALUE uses the current window frame; define a frame explicitly when you need the partition-wide first value."
+  },
+  {
+    "id": "subqueries",
+    "title": "Subqueries",
+    "definition": "To nest a query within another",
+    "syntax": "SELECT customer_id, first_name, last_name\nFROM customer\nWHERE customer_id IN (\n    SELECT customer_id\n    FROM payment\n    GROUP BY customer_id\n    HAVING sum(amount) >= 100\n);",
+    "note": "Prefer EXISTS for existence checks, especially when the subquery may return many rows."
+  },
+  {
+    "id": "common-table-expressions-cte",
+    "title": "Common Table Expressions (CTE)",
+    "definition": "To name an intermediate result",
+    "syntax": "WITH customer_spend AS (\n    SELECT customer_id, sum(amount) AS total_paid\n    FROM payment\n    GROUP BY customer_id\n)\nSELECT c.customer_id, c.first_name, cs.total_paid\nFROM customer AS c\nJOIN customer_spend AS cs ON cs.customer_id = c.customer_id\nORDER BY cs.total_paid DESC;",
+    "note": "A CTE improves readability; PostgreSQL can inline non-recursive CTEs when it is safe to do so."
+  },
+  {
+    "id": "views",
+    "title": "Views",
+    "definition": "To save a reusable query",
+    "syntax": "CREATE VIEW customer_payment_summary AS\nSELECT customer_id, count(*) AS payment_count, sum(amount) AS total_paid\nFROM payment\nGROUP BY customer_id;\n\nSELECT *\nFROM customer_payment_summary\nORDER BY total_paid DESC;\n\nDROP VIEW customer_payment_summary;",
+    "note": "A regular view stores its query, not its result; query performance still depends on the underlying tables and plan."
+  },
+  {
+    "id": "ctas-and-temp-tables",
+    "title": "CTAS and Temp Tables",
+    "definition": "To materialize query results",
+    "syntax": "CREATE TEMP TABLE recent_rentals AS\nSELECT rental_id, customer_id, rental_date\nFROM rental\nWHERE rental_date >= date '2005-07-01';\n\nSELECT count(*)\nFROM recent_rentals;",
+    "note": "Temporary tables are session-scoped and are dropped automatically when the session ends."
+  },
+  {
+    "id": "stored-procedures",
+    "title": "Stored Procedures",
+    "definition": "To encapsulate procedural operations",
+    "syntax": "CREATE PROCEDURE validate_customer(p_customer_id smallint)\nLANGUAGE plpgsql\nAS $$\nBEGIN\n    IF NOT EXISTS (SELECT 1 FROM customer WHERE customer_id = p_customer_id) THEN\n        RAISE EXCEPTION 'Customer % does not exist', p_customer_id;\n    END IF;\nEND;\n$$;\n\nCALL validate_customer(1);\n\nDROP PROCEDURE validate_customer(smallint);",
+    "note": "Procedures are invoked with CALL; PostgreSQL functions are invoked inside expressions such as SELECT."
+  },
+  {
+    "id": "triggers",
+    "title": "Triggers",
+    "definition": "To react to table changes",
+    "syntax": "CREATE FUNCTION set_customer_last_update()\nRETURNS trigger\nLANGUAGE plpgsql\nAS $$\nBEGIN\n    NEW.last_update := now();\n    RETURN NEW;\nEND;\n$$;\n\nCREATE TRIGGER customer_set_last_update\nBEFORE UPDATE ON customer\nFOR EACH ROW EXECUTE FUNCTION set_customer_last_update();\n\nDROP TRIGGER customer_set_last_update ON customer;\nDROP FUNCTION set_customer_last_update();",
+    "note": "Triggers execute implicitly and can make writes harder to reason about; keep their logic small and documented."
+  },
+  {
+    "id": "indexes",
+    "title": "Indexes",
+    "definition": "To accelerate data access",
+    "syntax": "CREATE INDEX idx_payment_customer_date\nON payment (customer_id, payment_date);\n\nSELECT payment_id, amount\nFROM payment\nWHERE customer_id = 1\n  AND payment_date >= timestamp '2005-06-01';\n\nDROP INDEX idx_payment_customer_date;",
+    "note": "Indexes speed qualifying reads but add storage and write overhead. Put commonly filtered leading columns first in a composite B-tree index."
+  },
+  {
+    "id": "execution-plan",
+    "title": "Execution Plan",
+    "definition": "To inspect query execution",
+    "syntax": "EXPLAIN (ANALYZE, BUFFERS)\nSELECT c.customer_id, sum(p.amount) AS total_paid\nFROM customer AS c\nJOIN payment AS p ON p.customer_id = c.customer_id\nWHERE p.payment_date >= timestamp '2005-06-01'\nGROUP BY c.customer_id;",
+    "note": "EXPLAIN ANALYZE executes the query; use it carefully with expensive or mutating statements."
+  },
+  {
+    "id": "partitions",
+    "title": "Partitions",
+    "definition": "To split large tables by key",
+    "syntax": "CREATE TABLE payment_archive (\n    payment_id integer NOT NULL,\n    customer_id smallint NOT NULL,\n    payment_date timestamp NOT NULL,\n    amount numeric(5,2) NOT NULL\n) PARTITION BY RANGE (payment_date);\n\nCREATE TABLE payment_archive_2005_06\nPARTITION OF payment_archive\nFOR VALUES FROM ('2005-06-01') TO ('2005-07-01');\n\nINSERT INTO payment_archive (payment_id, customer_id, payment_date, amount)\nSELECT payment_id, customer_id, payment_date, amount\nFROM payment\nWHERE payment_date >= timestamp '2005-06-01'\n  AND payment_date < timestamp '2005-07-01';",
+    "note": "Partition pruning requires predicates that can be matched to the partition key. Partitioning is not a substitute for appropriate indexes."
+  }
 ]

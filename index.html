@@ -3,7 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="A concise SQL reference for PostgreSQL learning." />
+    <meta
+      name="description"
+      content="A concise SQL reference for PostgreSQL learning."
+    />
     <title>SQL Notebook — Quick Reference</title>
     <link rel="stylesheet" href="styles.css" />
     <script src="script.js" defer></script>
@@ -11,9 +14,10 @@
   <body>
     <header class="site-header">
       <div class="header-content">
-        <p class="eyebrow">PostgreSQL · dvdrental</p>
         <h1>SQL Notebook</h1>
-        <p class="subtitle">A focused quick reference for querying, modeling, and optimizing data.</p>
+        <p class="subtitle">
+          A focused quick reference for querying, modeling, and optimizing data.
+        </p>
       </div>
     </header>
 
@@ -22,7 +26,12 @@
         <label class="search-field" for="search-input">
           <span class="sr-only">Search topics</span>
           <span class="search-icon" aria-hidden="true">⌕</span>
-          <input id="search-input" type="search" placeholder="Search topics…" autocomplete="off" />
+          <input
+            id="search-input"
+            type="search"
+            placeholder="Search topics…"
+            autocomplete="off"
+          />
         </label>
         <div class="action-buttons">
           <button type="button" id="expand-all">Expand All</button>
@@ -31,8 +40,14 @@
       </section>
 
       <p id="results-count" class="results-count" aria-live="polite"></p>
-      <section id="cheatsheet" class="cheatsheet" aria-label="SQL quick reference"></section>
-      <p id="empty-state" class="empty-state" hidden>No matching topics found.</p>
+      <section
+        id="cheatsheet"
+        class="cheatsheet"
+        aria-label="SQL quick reference"
+      ></section>
+      <p id="empty-state" class="empty-state" hidden>
+        No matching topics found.
+      </p>
     </main>
   </body>
 </html>
