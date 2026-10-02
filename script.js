@@ -148,7 +148,7 @@ function setAll(open) {
 
 async function loadTopics() {
   try {
-    const response = await fetch("data.json");
+    const response = await fetch("data.json?v=999ced7");
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
 
