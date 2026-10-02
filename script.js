@@ -28,20 +28,28 @@ function createTextBlock(label, value) {
   return block;
 }
 
-function createSyntaxBlock(value) {
+function createCodeBlock(labelText, value, options = {}) {
   const block = document.createElement("section");
   block.className = "content-block";
 
   const label = document.createElement("span");
   label.className = "content-label";
-  label.textContent = "Syntax";
+  label.textContent = labelText;
+  if (options.platform) {
+    const badge = document.createElement("small");
+    badge.className = "platform-badge";
+    badge.textContent = options.platform;
+    label.append(" ", badge);
+  }
 
+  const pre = document.createElement("pre");
   const code = document.createElement("code");
-  code.className = "syntax-box";
+  code.className = options.highlight ? "syntax-box language-sql" : "output-box";
   code.textContent = textOrPlaceholder(value);
   if (!value.trim()) code.classList.add("empty-content");
 
-  block.append(label, code);
+  pre.append(code);
+  block.append(label, pre);
   return block;
 }
 
@@ -70,13 +78,24 @@ function renderTopics(items) {
     content.className = "topic-content";
     content.append(
       createTextBlock("Definition", topic.definition),
-      createSyntaxBlock(topic.syntax),
+      createCodeBlock("Structure/Syntax", topic.structure, { highlight: true }),
+      createCodeBlock("Example", topic.example, {
+        highlight: true,
+        platform: "PostgreSQL",
+      }),
+      createCodeBlock("Output", topic.output),
       createTextBlock("Note", topic.note),
     );
 
     details.append(summary, content);
     cheatsheet.append(details);
   });
+
+  if (window.hljs) {
+    cheatsheet.querySelectorAll("code.language-sql").forEach((code) => {
+      window.hljs.highlightElement(code);
+    });
+  }
 
   filterTopics();
 }
