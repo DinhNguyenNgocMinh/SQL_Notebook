@@ -1,0 +1,121 @@
+const cheatsheet = document.querySelector("#cheatsheet");
+const searchInput = document.querySelector("#search-input");
+const expandAllButton = document.querySelector("#expand-all");
+const collapseAllButton = document.querySelector("#collapse-all");
+const resultsCount = document.querySelector("#results-count");
+const emptyState = document.querySelector("#empty-state");
+
+const placeholder = "— no content yet —";
+let topics = [];
+
+function textOrPlaceholder(value) {
+  return value.trim() ? value : placeholder;
+}
+
+function createTextBlock(label, value) {
+  const block = document.createElement("section");
+  block.className = "content-block";
+
+  const labelElement = document.createElement("span");
+  labelElement.className = "content-label";
+  labelElement.textContent = label;
+
+  const text = document.createElement("p");
+  text.className = "content-text";
+  text.textContent = textOrPlaceholder(value);
+  if (!value.trim()) text.classList.add("empty-content");
+
+  block.append(labelElement, text);
+  return block;
+}
+
+function createSyntaxBlock(value) {
+  const block = document.createElement("section");
+  block.className = "content-block";
+
+  const label = document.createElement("span");
+  label.className = "content-label";
+  label.textContent = "Syntax";
+
+  const code = document.createElement("code");
+  code.className = "syntax-box";
+  code.textContent = textOrPlaceholder(value);
+  if (!value.trim()) code.classList.add("empty-content");
+
+  block.append(label, code);
+  return block;
+}
+
+function renderTopics(items) {
+  cheatsheet.replaceChildren();
+
+  items.forEach((topic, index) => {
+    const details = document.createElement("details");
+    details.className = "topic";
+    details.dataset.title = topic.title.toLocaleLowerCase();
+    details.id = topic.id;
+
+    const summary = document.createElement("summary");
+    summary.className = "topic-summary";
+    summary.innerHTML = `<span class="topic-number">${String(index + 1).padStart(2, "0")}</span><span class="topic-title"></span>`;
+    summary.querySelector(".topic-title").textContent = topic.title;
+
+    const content = document.createElement("div");
+    content.className = "topic-content";
+    content.append(
+      createTextBlock("Definition", topic.definition),
+      createSyntaxBlock(topic.syntax),
+      createTextBlock("Note", topic.note)
+    );
+
+    details.append(summary, content);
+    cheatsheet.append(details);
+  });
+
+  filterTopics();
+}
+
+function visibleTopics() {
+  return [...document.querySelectorAll(".topic")].filter((topic) => !topic.hidden);
+}
+
+function filterTopics() {
+  const query = searchInput.value.trim().toLocaleLowerCase();
+  const elements = [...document.querySelectorAll(".topic")];
+
+  elements.forEach((topic) => {
+    const matches = !query || topic.dataset.title.includes(query);
+    topic.hidden = !matches;
+  });
+
+  const count = visibleTopics().length;
+  resultsCount.textContent = query ? `${count} matching topic${count === 1 ? "" : "s"}` : `${count} topics`;
+  emptyState.hidden = count !== 0;
+}
+
+function setAll(open) {
+  visibleTopics().forEach((topic) => { topic.open = open; });
+}
+
+async function loadTopics() {
+  try {
+    const response = await fetch("data.json");
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+
+    if (!Array.isArray(data)) throw new Error("data.json must contain an array.");
+    topics = data;
+    renderTopics(topics);
+  } catch (error) {
+    resultsCount.textContent = "Unable to load reference data.";
+    emptyState.hidden = false;
+    emptyState.textContent = "Run the site from GitHub Pages or a local web server so data.json can be loaded.";
+    console.error("Could not load data.json:", error);
+  }
+}
+
+searchInput.addEventListener("input", filterTopics);
+expandAllButton.addEventListener("click", () => setAll(true));
+collapseAllButton.addEventListener("click", () => setAll(false));
+
+loadTopics();
